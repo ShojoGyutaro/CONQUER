@@ -3,118 +3,594 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Conquer - Gym & Fitness</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css">
+    <title>CONQUER | Premium Gym & Fitness</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="assets/icons/dumbbell.svg">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&family=Montserrat:wght@900&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    
+    <!-- AOS Animation -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    
+    <!-- Swiper CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- Theme Toggle -->
+    <div class="theme-toggle">
+        <input type="checkbox" id="theme-switch" class="checkbox">
+        <label for="theme-switch" class="switch">
+            <i class="fas fa-sun"></i>
+            <i class="fas fa-moon"></i>
+            <span class="ball"></span>
+        </label>
+    </div>
 
-    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
-        <div class="container">
-            <a class="navbar-brand" href="#">
-                <i class="fas fa-dumbbell"></i> CONQUER
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link" href="#home">Home</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#about">About</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#memberships">Memberships</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#trainers">Trainers</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#contact">Contact</a></li>
-                    <li class="nav-item"><a class="nav-link btn btn-primary" href="#" id="loginBtn">Login</a></li>
-                    <li class="nav-item"><a class="nav-link btn btn-outline-light" href="#" id="signupBtn">Sign Up</a></li>
-                </ul>
+    <!-- Loading Screen -->
+    <div class="loading-screen">
+        <div class="loader">
+            <div class="dumbbell-loader">
+                <div class="bar"></div>
+                <div class="circle left"></div>
+                <div class="circle right"></div>
+                <div class="bar"></div>
             </div>
+            <p>Loading Conquer Gym...</p>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="#" class="nav-logo">
+                <div class="logo-icon">
+                    <i class="fas fa-dumbbell"></i>
+                </div>
+                <span class="logo-text">CONQUER</span>
+            </a>
+            
+            <div class="nav-menu">
+                <ul class="nav-list">
+                    <li class="nav-item"><a href="#home" class="nav-link active">Home</a></li>
+                    <li class="nav-item"><a href="#about" class="nav-link">About</a></li>
+                    <li class="nav-item"><a href="#memberships" class="nav-link">Memberships</a></li>
+                    <li class="nav-item"><a href="#trainers" class="nav-link">Trainers</a></li>
+                    <li class="nav-item"><a href="#facilities" class="nav-link">Facilities</a></li>
+                    <li class="nav-item"><a href="#testimonials" class="nav-link">Success Stories</a></li>
+                    <li class="nav-item"><a href="#contact" class="nav-link">Contact</a></li>
+                </ul>
+                
+                <div class="nav-actions">
+                    <button class="btn-login">
+                        <i class="fas fa-user"></i>
+                        <span>Login</span>
+                    </button>
+                    <button class="btn-primary btn-join">
+                        <span>Join Now</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <button class="nav-toggle">
+                <span class="hamburger"></span>
+            </button>
         </div>
     </nav>
 
-
-    <section id="home" class="hero-section">
-        <div class="container">
-            <div class="row">
-                <div class="col-lg-6">
-                    <h1>CONQUER YOUR LIMITS</h1>
-                    <p class="lead">Transform your body, transform your life. Join the fittest community in town.</p>
-                    <a href="#memberships" class="btn btn-primary btn-lg">View Memberships</a>
+    <!-- Hero Section -->
+    <section class="hero" id="home">
+        <div class="hero-container">
+            <div class="hero-content" data-aos="fade-right" data-aos-duration="1000">
+                <h1 class="hero-title">
+                    <span class="title-line">REDEFINE YOUR</span>
+                    <span class="title-highlight">LIMITS</span>
+                </h1>
+                <p class="hero-subtitle">
+                    Join the ultimate fitness revolution at Conquer Gym. Where ordinary ends and extraordinary begins.
+                </p>
+                
+                <div class="hero-stats">
+                    <div class="stat">
+                        <span class="stat-number" data-count="5000">0</span>
+                        <span class="stat-label">Active Members</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-number" data-count="50">0</span>
+                        <span class="stat-label">Expert Trainers</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-number" data-count="24">0</span>
+                        <span class="stat-label">Hours Open</span>
+                    </div>
+                </div>
+                
+                <div class="hero-actions">
+                    <button class="btn-primary btn-hero" onclick="openMembershipModal()">
+                        <span>Start Your Journey</span>
+                        <i class="fas fa-fire"></i>
+                    </button>
+                    <button class="btn-secondary" onclick="scrollToSection('memberships')">
+                        <i class="fas fa-play-circle"></i>
+                        <span>Virtual Tour</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="hero-image" data-aos="fade-left" data-aos-duration="1000">
+                <div class="image-container">
+                    <img src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80" alt="Gym Interior" class="main-image">
+                    <div class="floating-badge">
+                        <i class="fas fa-award"></i>
+                        <span>#1 Gym 2024</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="hero-scroll">
+            <span>Scroll Down</span>
+            <div class="scroll-icon">
+                <div class="mouse">
+                    <div class="wheel"></div>
                 </div>
             </div>
         </div>
     </section>
 
-
-    <section id="memberships" class="py-5">
-        <div class="container">
-            <h2 class="text-center mb-5">CHOOSE YOUR PLAN</h2>
-            <div class="row" id="membershipPlans">
-
+    <!-- Animated Stats Bar -->
+    <section class="stats-bar">
+        <div class="stats-container">
+            <div class="stat-item" data-aos="fade-up" data-aos-delay="100">
+                <i class="fas fa-calendar-check"></i>
+                <div>
+                    <h3>Free Trial</h3>
+                    <p>7 Day Pass</p>
+                </div>
+            </div>
+            <div class="stat-item" data-aos="fade-up" data-aos-delay="200">
+                <i class="fas fa-trophy"></i>
+                <div>
+                    <h3>Elite Equipment</h3>
+                    <p>Top Brands</p>
+                </div>
+            </div>
+            <div class="stat-item" data-aos="fade-up" data-aos-delay="300">
+                <i class="fas fa-users"></i>
+                <div>
+                    <h3>Community</h3>
+                    <p>5,000+ Members</p>
+                </div>
+            </div>
+            <div class="stat-item" data-aos="fade-up" data-aos-delay="400">
+                <i class="fas fa-heart-pulse"></i>
+                <div>
+                    <h3>Health First</h3>
+                    <p>Certified Trainers</p>
+                </div>
             </div>
         </div>
     </section>
 
-    <div class="modal fade" id="signupModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Join Conquer Gym</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <!-- Membership Plans -->
+    <section class="memberships" id="memberships">
+        <div class="section-header" data-aos="fade-up">
+            <h2 class="section-title">CHOOSE YOUR <span class="highlight">BATTLE PLAN</span></h2>
+            <p class="section-subtitle">Flexible memberships designed for every fitness warrior</p>
+        </div>
+        
+        <div class="plans-container">
+            <!-- Basic Plan -->
+            <div class="plan-card" data-aos="fade-up" data-aos-delay="100">
+                <div class="plan-header">
+                    <h3 class="plan-name">WARRIOR</h3>
+                    <div class="plan-price">
+                        <sup>$</sup>29<span>/month</span>
+                    </div>
+                    <p class="plan-desc">Perfect for beginners</p>
                 </div>
-                <div class="modal-body">
-                    <form id="signupForm">
-                        <div class="mb-3">
-                            <label class="form-label">Full Name</label>
-                            <input type="text" class="form-control" id="fullName" required>
+                
+                <div class="plan-features">
+                    <ul>
+                        <li><i class="fas fa-check-circle"></i> Full Gym Access</li>
+                        <li><i class="fas fa-check-circle"></i> Locker Facilities</li>
+                        <li><i class="fas fa-check-circle"></i> Free Wi-Fi</li>
+                        <li><i class="fas fa-times-circle"></i> Group Classes</li>
+                        <li><i class="fas fa-times-circle"></i> Personal Trainer</li>
+                        <li><i class="fas fa-times-circle"></i> 24/7 Access</li>
+                    </ul>
+                </div>
+                
+                <button class="plan-select" onclick="selectPlan('warrior')">
+                    Start Warrior Journey
+                </button>
+            </div>
+            
+            <!-- Popular Plan -->
+            <div class="plan-card popular" data-aos="fade-up" data-aos-delay="200">
+                <div class="popular-badge">MOST POPULAR</div>
+                <div class="plan-header">
+                    <h3 class="plan-name">CHAMPION</h3>
+                    <div class="plan-price">
+                        <sup>$</sup>49<span>/month</span>
+                    </div>
+                    <p class="plan-desc">Best value for serious trainers</p>
+                </div>
+                
+                <div class="plan-features">
+                    <ul>
+                        <li><i class="fas fa-check-circle"></i> Everything in Warrior</li>
+                        <li><i class="fas fa-check-circle"></i> All Group Classes</li>
+                        <li><i class="fas fa-check-circle"></i> 2 PT Sessions/Month</li>
+                        <li><i class="fas fa-check-circle"></i> Sauna & Steam Room</li>
+                        <li><i class="fas fa-times-circle"></i> 24/7 Access</li>
+                        <li><i class="fas fa-times-circle"></i> Nutrition Planning</li>
+                    </ul>
+                </div>
+                
+                <button class="plan-select popular-btn" onclick="selectPlan('champion')">
+                    Become a Champion
+                </button>
+            </div>
+            
+            <!-- Elite Plan -->
+            <div class="plan-card elite" data-aos="fade-up" data-aos-delay="300">
+                <div class="plan-header">
+                    <h3 class="plan-name">LEGEND</h3>
+                    <div class="plan-price">
+                        <sup>$</sup>79<span>/month</span>
+                    </div>
+                    <p class="plan-desc">Ultimate fitness experience</p>
+                </div>
+                
+                <div class="plan-features">
+                    <ul>
+                        <li><i class="fas fa-check-circle"></i> Everything in Champion</li>
+                        <li><i class="fas fa-check-circle"></i> 24/7 Unlimited Access</li>
+                        <li><i class="fas fa-check-circle"></i> Unlimited PT Sessions</li>
+                        <li><i class="fas fa-check-circle"></i> Custom Nutrition Plan</li>
+                        <li><i class="fas fa-check-circle"></i> Recovery & Massage</li>
+                        <li><i class="fas fa-check-circle"></i> Guest Pass Monthly</li>
+                    </ul>
+                </div>
+                
+                <button class="plan-select" onclick="selectPlan('legend')">
+                    Join the Legends
+                </button>
+            </div>
+        </div>
+        
+        <div class="membership-note" data-aos="fade-up">
+            <p><i class="fas fa-info-circle"></i> All plans include a 7-day free trial. No contracts, cancel anytime.</p>
+        </div>
+    </section>
+
+    <!-- Trainers Section -->
+    <section class="trainers" id="trainers">
+        <div class="section-header" data-aos="fade-up">
+            <h2 class="section-title">MEET OUR <span class="highlight">EXPERT TRAINERS</span></h2>
+            <p class="section-subtitle">Certified professionals dedicated to your success</p>
+        </div>
+        
+        <div class="trainers-container">
+            <div class="trainer-card" data-aos="flip-left" data-aos-delay="100">
+                <div class="trainer-image">
+                    <img src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Trainer Alex">
+                    <div class="trainer-overlay">
+                        <div class="social-links">
+                            <a href="#"><i class="fab fa-instagram"></i></a>
+                            <a href="#"><i class="fab fa-twitter"></i></a>
+                            <a href="#"><i class="fab fa-linkedin"></i></a>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Email</label>
-                            <input type="email" class="form-control" id="email" required>
+                    </div>
+                </div>
+                <div class="trainer-info">
+                    <h3>Alex Morgan</h3>
+                    <p class="trainer-specialty">Strength & Conditioning</p>
+                    <p class="trainer-bio">10+ years experience, NASM certified</p>
+                    <div class="trainer-rating">
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star-half-alt"></i>
+                        <span>4.8/5.0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="trainer-card" data-aos="flip-left" data-aos-delay="200">
+                <div class="trainer-image">
+                    <img src="https://images.unsplash.com/photo-1594381898411-846e7d193883?ixlib=rb-4.0.3&auto=format&fit=crop&w-800&q=80" alt="Trainer Sarah">
+                    <div class="trainer-overlay">
+                        <div class="social-links">
+                            <a href="#"><i class="fab fa-instagram"></i></a>
+                            <a href="#"><i class="fab fa-twitter"></i></a>
+                            <a href="#"><i class="fab fa-linkedin"></i></a>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Password</label>
-                            <input type="password" class="form-control" id="password" required>
+                    </div>
+                </div>
+                <div class="trainer-info">
+                    <h3>Sarah Chen</h3>
+                    <p class="trainer-specialty">Yoga & Mobility</p>
+                    <p class="trainer-bio">RYT 500 certified, 8 years teaching</p>
+                    <div class="trainer-rating">
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <span>5.0/5.0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="trainer-card" data-aos="flip-left" data-aos-delay="300">
+                <div class="trainer-image">
+                    <img src="https://images.unsplash.com/photo-1548690312-e3b507d8c110?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Trainer Marcus">
+                    <div class="trainer-overlay">
+                        <div class="social-links">
+                            <a href="#"><i class="fab fa-instagram"></i></a>
+                            <a href="#"><i class="fab fa-twitter"></i></a>
+                            <a href="#"><i class="fab fa-linkedin"></i></a>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Select Membership</label>
-                            <select class="form-select" id="membershipType">
-                                <option value="basic">Basic - $29/month</option>
-                                <option value="pro">Pro - $49/month</option>
-                                <option value="elite">Elite - $79/month</option>
-                            </select>
+                    </div>
+                </div>
+                <div class="trainer-info">
+                    <h3>Marcus Johnson</h3>
+                    <p class="trainer-specialty">Bodybuilding & Nutrition</p>
+                    <p class="trainer-bio">IFBB Pro, 15 years experience</p>
+                    <div class="trainer-rating">
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <span>5.0/5.0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Facilities -->
+    <section class="facilities" id="facilities">
+        <div class="section-header" data-aos="fade-up">
+            <h2 class="section-title">WORLD-CLASS <span class="highlight">FACILITIES</span></h2>
+            <p class="section-subtitle">Everything you need for your fitness journey</p>
+        </div>
+        
+        <div class="facilities-grid">
+            <div class="facility-card" data-aos="zoom-in">
+                <div class="facility-icon">
+                    <i class="fas fa-dumbbell"></i>
+                </div>
+                <h3>Strength Zone</h3>
+                <p>State-of-the-art equipment from leading brands</p>
+            </div>
+            
+            <div class="facility-card" data-aos="zoom-in" data-aos-delay="100">
+                <div class="facility-icon">
+                    <i class="fas fa-running"></i>
+                </div>
+                <h3>Cardio Arena</h3>
+                <p>Treadmills, bikes, and ellipticals with entertainment</p>
+            </div>
+            
+            <div class="facility-card" data-aos="zoom-in" data-aos-delay="200">
+                <div class="facility-icon">
+                    <i class="fas fa-spa"></i>
+                </div>
+                <h3>Recovery Center</h3>
+                <p>Sauna, steam room, and massage therapy</p>
+            </div>
+            
+            <div class="facility-card" data-aos="zoom-in" data-aos-delay="300">
+                <div class="facility-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <h3>Group Studios</h3>
+                <p>Yoga, spin, HIIT, and functional training classes</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Registration Modal -->
+    <div class="modal-overlay" id="membershipModal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2>Join the Conquer Community</h2>
+                <button class="modal-close" onclick="closeModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body">
+                <form id="registrationForm">
+                    <div class="form-step active" id="step1">
+                        <h3>Choose Your Plan</h3>
+                        <div class="plan-options">
+                            <div class="plan-option" onclick="selectPlanOption('warrior')">
+                                <h4>Warrior</h4>
+                                <div class="price">$29<span>/month</span></div>
+                                <p>Basic access</p>
+                            </div>
+                            <div class="plan-option popular" onclick="selectPlanOption('champion')">
+                                <h4>Champion</h4>
+                                <div class="price">$49<span>/month</span></div>
+                                <p>Most popular</p>
+                            </div>
+                            <div class="plan-option" onclick="selectPlanOption('legend')">
+                                <h4>Legend</h4>
+                                <div class="price">$79<span>/month</span></div>
+                                <p>Premium experience</p>
+                            </div>
                         </div>
-                        <button type="submit" class="btn btn-primary w-100">Sign Up Now</button>
-                    </form>
-                    <div id="signupMessage" class="mt-3"></div>
+                        
+                        <button type="button" class="btn-next" onclick="nextStep()">
+                            Next: Personal Details
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="form-step" id="step2">
+                        <h3>Personal Information</h3>
+                        <div class="form-group">
+                            <input type="text" placeholder="Full Name" required>
+                        </div>
+                        <div class="form-group">
+                            <input type="email" placeholder="Email Address" required>
+                        </div>
+                        <div class="form-group">
+                            <input type="tel" placeholder="Phone Number">
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="button" class="btn-back" onclick="prevStep()">
+                                <i class="fas fa-arrow-left"></i>
+                                Back
+                            </button>
+                            <button type="button" class="btn-next" onclick="nextStep()">
+                                Next: Account Setup
+                                <i class="fas fa-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-step" id="step3">
+                        <h3>Account Setup</h3>
+                        <div class="form-group">
+                            <input type="password" placeholder="Create Password" required>
+                        </div>
+                        <div class="form-group">
+                            <input type="password" placeholder="Confirm Password" required>
+                        </div>
+                        
+                        <div class="form-check">
+                            <input type="checkbox" id="terms" required>
+                            <label for="terms">
+                                I agree to the <a href="#">Terms & Conditions</a> and <a href="#">Privacy Policy</a>
+                            </label>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="button" class="btn-back" onclick="prevStep()">
+                                <i class="fas fa-arrow-left"></i>
+                                Back
+                            </button>
+                            <button type="submit" class="btn-submit">
+                                <i class="fas fa-check-circle"></i>
+                                Complete Registration
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                
+                <div class="progress-bar">
+                    <div class="progress-step active" data-step="1"></div>
+                    <div class="progress-step" data-step="2"></div>
+                    <div class="progress-step" data-step="3"></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <footer class="bg-dark text-white py-4">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-4">
-                    <h5><i class="fas fa-dumbbell"></i> CONQUER</h5>
-                    <p>Transform your life through fitness.</p>
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-brand">
+                <div class="footer-logo">
+                    <i class="fas fa-dumbbell"></i>
+                    <span>CONQUER</span>
                 </div>
-                <div class="col-md-4">
-                    <h5>Contact</h5>
-                    <p><i class="fas fa-map-marker-alt"></i> 123 Fitness St, City</p>
-                    <p><i class="fas fa-phone"></i> (123) 456-7890</p>
-                </div>
-                <div class="col-md-4">
-                    <h5>Hours</h5>
-                    <p>Mon-Fri: 5AM - 11PM</p>
-                    <p>Sat-Sun: 7AM - 9PM</p>
+                <p>Redefining fitness limits since 2010</p>
+                <div class="footer-social">
+                    <a href="#"><i class="fab fa-instagram"></i></a>
+                    <a href="#"><i class="fab fa-facebook"></i></a>
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="#"><i class="fab fa-youtube"></i></a>
+                    <a href="#"><i class="fab fa-tiktok"></i></a>
                 </div>
             </div>
+            
+            <div class="footer-links">
+                <div class="link-group">
+                    <h4>Membership</h4>
+                    <a href="#">Plans & Pricing</a>
+                    <a href="#">Free Trial</a>
+                    <a href="#">Corporate Plans</a>
+                    <a href="#">Student Discount</a>
+                </div>
+                
+                <div class="link-group">
+                    <h4>Facilities</h4>
+                    <a href="#">Equipment</a>
+                    <a href="#">Classes Schedule</a>
+                    <a href="#">Personal Training</a>
+                    <a href="#">Recovery Center</a>
+                </div>
+                
+                <div class="link-group">
+                    <h4>Company</h4>
+                    <a href="#">About Us</a>
+                    <a href="#">Careers</a>
+                    <a href="#">Privacy Policy</a>
+                    <a href="#">Terms of Service</a>
+                </div>
+            </div>
+            
+            <div class="footer-contact">
+                <h4>Contact Us</h4>
+                <p><i class="fas fa-map-marker-alt"></i> 123 Fitness Street, Cityville</p>
+                <p><i class="fas fa-phone"></i> (555) 123-4567</p>
+                <p><i class="fas fa-envelope"></i> info@conquergym.com</p>
+                <p><i class="fas fa-clock"></i> Open 24/7 for Elite Members</p>
+            </div>
+        </div>
+        
+        <div class="footer-bottom">
+            <p>&copy; 2024 Conquer Gym. All rights reserved. | Made with <i class="fas fa-heart"></i> for fitness warriors</p>
         </div>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="js/main.js"></script>
+    <!-- Back to Top -->
+    <button class="back-to-top">
+        <i class="fas fa-chevron-up"></i>
+    </button>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.js"></script>
+    <script src="script.js"></script>
+    
+    <script>
+        // Initialize AOS
+        AOS.init({
+            duration: 1000,
+            once: true,
+            offset: 100
+        });
+        
+        // Hide loading screen
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                document.querySelector('.loading-screen').style.opacity = '0';
+                setTimeout(() => {
+                    document.querySelector('.loading-screen').style.display = 'none';
+                }, 500);
+            }, 1000);
+        });
+    </script>
 </body>
 </html>
