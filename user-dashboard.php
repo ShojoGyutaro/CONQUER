@@ -1,57 +1,107 @@
 <?php
 session_start();
-require_once 'config/database.php';
 
+// Enable error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+// Check if user is logged in
 if(!isset($_SESSION['user_id']) || !isset($_SESSION['user_type']) || $_SESSION['user_type'] !== 'member') {
     header('Location: login.php');
     exit();
 }
 
+// Initialize database connection
+$pdo = null;
+$error = '';
 $user_id = $_SESSION['user_id'];
 
-// Get user info
 try {
-    // User info
+    // Require the database class
+    require_once 'config/database.php';
+    
+    // Get database instance
+    $database = Database::getInstance();
+    $pdo = $database->getConnection();
+    
+    // Get user info
     $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
     $stmt->execute([$user_id]);
     $user = $stmt->fetch();
     
-    // Member info
-    $memberStmt = $pdo->prepare("SELECT * FROM gym_members WHERE Email = ?");
-    $memberStmt->execute([$user['email']]);
-    $member = $memberStmt->fetch();
+    if(!$user) {
+        // User not found in database
+        session_destroy();
+        header('Location: login.php');
+        exit();
+    }
     
-    // Upcoming classes
-    $classesStmt = $pdo->prepare("
-        SELECT c.*, t.full_name as trainer_name 
-        FROM bookings b 
-        JOIN classes c ON b.class_id = c.id 
-        JOIN users t ON c.trainer_id = t.id 
-        WHERE b.user_id = ? AND b.status = 'confirmed' 
-        AND c.schedule > NOW() 
-        ORDER BY c.schedule ASC 
-        LIMIT 3
-    ");
-    $classesStmt->execute([$user_id]);
-    $upcomingClasses = $classesStmt->fetchAll();
+    // Check if user is active
+    if(isset($user['is_active']) && !$user['is_active']) {
+        session_destroy();
+        header('Location: login.php?error=inactive');
+        exit();
+    }
+    
+    // Member info - check if gym_members table exists
+    $member = null;
+    try {
+        $memberStmt = $pdo->prepare("SELECT * FROM gym_members WHERE Email = ?");
+        $memberStmt->execute([$user['email']]);
+        $member = $memberStmt->fetch();
+    } catch(PDOException $e) {
+        // Table might not exist, continue without member info
+        error_log("Gym members table error: " . $e->getMessage());
+    }
+    
+    // Upcoming classes - check if bookings and classes tables exist
+    $upcomingClasses = [];
+    try {
+        $classesStmt = $pdo->prepare("
+            SELECT c.*, t.full_name as trainer_name 
+            FROM bookings b 
+            JOIN classes c ON b.class_id = c.id 
+            JOIN users t ON c.trainer_id = t.id 
+            WHERE b.user_id = ? AND b.status = 'confirmed' 
+            AND c.schedule > NOW() 
+            ORDER BY c.schedule ASC 
+            LIMIT 3
+        ");
+        $classesStmt->execute([$user_id]);
+        $upcomingClasses = $classesStmt->fetchAll();
+    } catch(PDOException $e) {
+        error_log("Classes query error: " . $e->getMessage());
+    }
     
     // Recent payments
-    $paymentsStmt = $pdo->prepare("
-        SELECT * FROM payments 
-        WHERE user_id = ? 
-        ORDER BY payment_date DESC 
-        LIMIT 5
-    ");
-    $paymentsStmt->execute([$user_id]);
-    $recentPayments = $paymentsStmt->fetchAll();
+    $recentPayments = [];
+    try {
+        $paymentsStmt = $pdo->prepare("
+            SELECT * FROM payments 
+            WHERE user_id = ? 
+            ORDER BY payment_date DESC 
+            LIMIT 5
+        ");
+        $paymentsStmt->execute([$user_id]);
+        $recentPayments = $paymentsStmt->fetchAll();
+    } catch(PDOException $e) {
+        error_log("Payments query error: " . $e->getMessage());
+    }
     
     // Success stories count
-    $storiesStmt = $pdo->prepare("SELECT COUNT(*) as count FROM success_stories WHERE user_id = ? AND approved = 1");
-    $storiesStmt->execute([$user_id]);
-    $storiesCount = $storiesStmt->fetch()['count'];
+    $storiesCount = 0;
+    try {
+        $storiesStmt = $pdo->prepare("SELECT COUNT(*) as count FROM success_stories WHERE user_id = ? AND approved = 1");
+        $storiesStmt->execute([$user_id]);
+        $result = $storiesStmt->fetch();
+        $storiesCount = $result ? $result['count'] : 0;
+    } catch(PDOException $e) {
+        error_log("Success stories query error: " . $e->getMessage());
+    }
     
 } catch(PDOException $e) {
-    die("Database error: " . $e->getMessage());
+    $error = 'Database connection failed. Please try again later.';
+    error_log("Dashboard error: " . $e->getMessage());
 }
 ?>
 <!DOCTYPE html>
@@ -71,8 +121,43 @@ try {
     
     <!-- CSS -->
     <link rel="stylesheet" href="dashboard-style.css">
+    
+    <style>
+        /* Error message styling */
+        .error-banner {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            animation: slideIn 0.5s ease;
+        }
+        
+        .error-banner i {
+            font-size: 1.5rem;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
 </head>
 <body>
+    <?php if($error): ?>
+        <div class="error-banner">
+            <i class="fas fa-exclamation-triangle"></i>
+            <div>
+                <h3>System Error</h3>
+                <p><?php echo htmlspecialchars($error); ?></p>
+                <p><small>Please contact support if this persists.</small></p>
+            </div>
+        </div>
+    <?php endif; ?>
+    
     <!-- Sidebar -->
     <div class="sidebar">
         <div class="sidebar-header">
@@ -82,10 +167,10 @@ try {
             </div>
             <div class="user-profile">
                 <div class="user-avatar">
-                    <?php echo strtoupper(substr($user['full_name'], 0, 1)); ?>
+                    <?php echo isset($user['full_name']) ? strtoupper(substr($user['full_name'], 0, 1)) : 'U'; ?>
                 </div>
                 <div class="user-details">
-                    <h4><?php echo htmlspecialchars($user['full_name']); ?></h4>
+                    <h4><?php echo isset($user['full_name']) ? htmlspecialchars($user['full_name']) : 'User'; ?></h4>
                     <p>Member</p>
                 </div>
             </div>
@@ -155,12 +240,12 @@ try {
             <!-- Welcome Banner -->
             <div class="welcome-banner">
                 <div class="welcome-content">
-                    <h1>Welcome back, <?php echo htmlspecialchars($user['full_name']); ?>! 💪</h1>
+                    <h1>Welcome back, <?php echo isset($user['full_name']) ? htmlspecialchars($user['full_name']) : 'Member'; ?>! 💪</h1>
                     <p>Track your progress, book classes, and continue your fitness journey</p>
                 </div>
                 <div class="welcome-stats">
                     <div class="stat">
-                        <h3><?php echo count($upcomingClasses); ?></h3>
+                        <h3><?php echo isset($upcomingClasses) ? count($upcomingClasses) : 0; ?></h3>
                         <p>Upcoming Classes</p>
                     </div>
                     <div class="stat">
@@ -178,8 +263,10 @@ try {
                     </div>
                     <div class="stat-info">
                         <h3>Membership</h3>
-                        <p><?php echo $member ? htmlspecialchars($member['MembershipPlan']) : 'No Plan'; ?></p>
-                        <span class="status-badge active"><?php echo $member ? htmlspecialchars($member['MembershipStatus']) : 'Inactive'; ?></span>
+                        <p><?php echo isset($member['MembershipPlan']) ? htmlspecialchars($member['MembershipPlan']) : 'Basic Plan'; ?></p>
+                        <span class="status-badge active">
+                            <?php echo isset($member['MembershipStatus']) ? htmlspecialchars($member['MembershipStatus']) : 'Active'; ?>
+                        </span>
                     </div>
                 </div>
 
@@ -189,7 +276,7 @@ try {
                     </div>
                     <div class="stat-info">
                         <h3>Total Classes</h3>
-                        <p><?php echo count($upcomingClasses); ?> Booked</p>
+                        <p><?php echo isset($upcomingClasses) ? count($upcomingClasses) : 0; ?> Booked</p>
                         <a href="my-classes.php">View All →</a>
                     </div>
                 </div>
@@ -228,22 +315,22 @@ try {
                         <a href="my-classes.php">View All</a>
                     </div>
                     <div class="card-body">
-                        <?php if(count($upcomingClasses) > 0): ?>
+                        <?php if(isset($upcomingClasses) && count($upcomingClasses) > 0): ?>
                             <?php foreach($upcomingClasses as $class): ?>
                                 <div class="class-item">
                                     <div class="class-time">
-                                        <h4><?php echo date('g:i A', strtotime($class['schedule'])); ?></h4>
-                                        <p><?php echo date('M j', strtotime($class['schedule'])); ?></p>
+                                        <h4><?php echo isset($class['schedule']) ? date('g:i A', strtotime($class['schedule'])) : 'N/A'; ?></h4>
+                                        <p><?php echo isset($class['schedule']) ? date('M j', strtotime($class['schedule'])) : 'N/A'; ?></p>
                                     </div>
                                     <div class="class-details">
-                                        <h4><?php echo htmlspecialchars($class['class_name']); ?></h4>
-                                        <p><i class="fas fa-user"></i> <?php echo htmlspecialchars($class['trainer_name']); ?></p>
-                                        <span class="class-tag <?php echo strtolower($class['class_type']); ?>">
-                                            <?php echo htmlspecialchars($class['class_type']); ?>
+                                        <h4><?php echo isset($class['class_name']) ? htmlspecialchars($class['class_name']) : 'Class'; ?></h4>
+                                        <p><i class="fas fa-user"></i> <?php echo isset($class['trainer_name']) ? htmlspecialchars($class['trainer_name']) : 'Trainer'; ?></p>
+                                        <span class="class-tag <?php echo isset($class['class_type']) ? strtolower($class['class_type']) : ''; ?>">
+                                            <?php echo isset($class['class_type']) ? htmlspecialchars($class['class_type']) : 'General'; ?>
                                         </span>
                                     </div>
                                     <div class="class-actions">
-                                        <button class="btn-sm" onclick="window.location.href='class-details.php?id=<?php echo $class['id']; ?>'">
+                                        <button class="btn-sm" onclick="window.location.href='class-details.php?id=<?php echo isset($class['id']) ? $class['id'] : ''; ?>'">
                                             View
                                         </button>
                                     </div>
@@ -266,7 +353,7 @@ try {
                         <a href="payments.php">View All</a>
                     </div>
                     <div class="card-body">
-                        <?php if(count($recentPayments) > 0): ?>
+                        <?php if(isset($recentPayments) && count($recentPayments) > 0): ?>
                             <div class="table-container">
                                 <table>
                                     <thead>
@@ -280,12 +367,12 @@ try {
                                     <tbody>
                                         <?php foreach($recentPayments as $payment): ?>
                                             <tr>
-                                                <td><?php echo date('M j, Y', strtotime($payment['payment_date'])); ?></td>
-                                                <td>$<?php echo number_format($payment['amount'], 2); ?></td>
-                                                <td><?php echo htmlspecialchars($payment['payment_method']); ?></td>
+                                                <td><?php echo isset($payment['payment_date']) ? date('M j, Y', strtotime($payment['payment_date'])) : 'N/A'; ?></td>
+                                                <td>$<?php echo isset($payment['amount']) ? number_format($payment['amount'], 2) : '0.00'; ?></td>
+                                                <td><?php echo isset($payment['payment_method']) ? htmlspecialchars($payment['payment_method']) : 'N/A'; ?></td>
                                                 <td>
-                                                    <span class="status-badge <?php echo strtolower($payment['status']); ?>">
-                                                        <?php echo htmlspecialchars($payment['status']); ?>
+                                                    <span class="status-badge <?php echo isset($payment['status']) ? strtolower($payment['status']) : ''; ?>">
+                                                        <?php echo isset($payment['status']) ? htmlspecialchars($payment['status']) : 'Pending'; ?>
                                                     </span>
                                                 </td>
                                             </tr>
