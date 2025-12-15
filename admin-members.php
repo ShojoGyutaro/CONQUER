@@ -15,11 +15,13 @@ if(!isset($_SESSION['user_id']) || !isset($_SESSION['user_type']) || $_SESSION['
 
 // Get members with pagination
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+if ($page < 1) $page = 1; // Ensure page is at least 1
+
 $limit = 10;
 $offset = ($page - 1) * $limit;
 
 // Search and filter
-$search = isset($_GET['search']) ? $_GET['search'] : '';
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $membershipPlan = isset($_GET['plan']) ? $_GET['plan'] : '';
 
 $whereClauses = ["u.user_type = 'member'"];
@@ -47,6 +49,13 @@ try {
     $countStmt->execute($params);
     $totalMembers = $countStmt->fetchColumn();
 
+    // Calculate total pages
+    $totalPages = ceil($totalMembers / $limit);
+    if ($page > $totalPages && $totalPages > 0) {
+        $page = $totalPages; // Adjust page if out of bounds
+        $offset = ($page - 1) * $limit;
+    }
+
     // Get members
     $membersSql = "
         SELECT 
@@ -70,6 +79,7 @@ try {
 } catch (PDOException $e) {
     $members = [];
     $totalMembers = 0;
+    $totalPages = 0;
     $plans = [];
     error_log("Members query error: " . $e->getMessage());
 }
@@ -224,14 +234,19 @@ try {
         .pagination {
             display: flex;
             justify-content: center;
+            align-items: center;
             gap: 0.5rem;
             margin-top: 2rem;
             flex-wrap: wrap;
         }
         
         .page-link {
-            display: inline-block;
-            padding: 0.5rem 1rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 40px;
+            height: 40px;
+            padding: 0.5rem;
             background: #f8f9fa;
             border: 1px solid #dee2e6;
             border-radius: 4px;
@@ -239,16 +254,30 @@ try {
             text-decoration: none;
             transition: all 0.3s;
             font-weight: 500;
+            cursor: pointer;
         }
         
         .page-link:hover {
             background: #e9ecef;
+            text-decoration: none;
         }
         
         .page-link.active {
             background: #ff4757;
             color: white;
             border-color: #ff4757;
+        }
+        
+        .page-link.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        
+        .page-info {
+            margin: 0 1rem;
+            color: #6c757d;
+            font-size: 0.9rem;
         }
         
         /* Responsive table */
@@ -268,6 +297,15 @@ try {
             
             .filter-group {
                 min-width: auto;
+            }
+            
+            .pagination {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .page-info {
+                margin: 0.5rem 0;
             }
         }
     </style>
@@ -300,14 +338,19 @@ try {
                         <p>Total Members</p>
                     </div>
                     <div class="stat">
-                        <h3><?php echo ceil($totalMembers / $limit); ?></h3>
+                        <h3><?php echo $totalPages; ?></h3>
                         <p>Total Pages</p>
+                    </div>
+                    <div class="stat">
+                        <h3><?php echo $page; ?></h3>
+                        <p>Current Page</p>
                     </div>
                 </div>
             </div>
 
             <!-- Filters -->
             <form method="GET" class="filters">
+                <input type="hidden" name="page" value="1"> <!-- Always reset to page 1 when filtering -->
                 <div class="filter-group">
                     <label>Search</label>
                     <input type="text" name="search" placeholder="Name, email, or plan" value="<?php echo htmlspecialchars($search); ?>">
@@ -331,9 +374,14 @@ try {
             <div class="content-card">
                 <div class="card-header">
                     <h3>Members List</h3>
-                    <a href="admin-export-members.php" class="btn-secondary btn-sm">
-                        <i class="fas fa-download"></i> Export CSV
-                    </a>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <span class="page-info">
+                            Showing <?php echo ($totalMembers > 0) ? ($offset + 1) : 0; ?> - <?php echo min($offset + $limit, $totalMembers); ?> of <?php echo $totalMembers; ?> members
+                        </span>
+                        <a href="admin-export-members.php" class="btn-secondary btn-sm">
+                            <i class="fas fa-download"></i> Export CSV
+                        </a>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="table-container">
@@ -392,38 +440,62 @@ try {
                     </div>
 
                     <!-- Pagination -->
-                    <?php if($totalMembers > $limit): ?>
+                    <?php if($totalPages > 1): ?>
                         <div class="pagination">
                             <?php
-                            $totalPages = ceil($totalMembers / $limit);
-                            
                             // Previous button
-                            if($page > 1): ?>
-                                <a href="?page=<?php echo $page-1; ?>&search=<?php echo urlencode($search); ?>&plan=<?php echo urlencode($membershipPlan); ?>" 
-                                   class="page-link">
-                                    <i class="fas fa-chevron-left"></i>
-                                </a>
-                            <?php endif; ?>
+                            $prevClass = ($page <= 1) ? 'disabled' : '';
+                            $prevPage = ($page > 1) ? $page - 1 : 1;
+                            ?>
+                            <a href="?page=<?php echo $prevPage; ?>&search=<?php echo urlencode($search); ?>&plan=<?php echo urlencode($membershipPlan); ?>" 
+                               class="page-link <?php echo $prevClass; ?>">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </a>
                             
-                            <?php for($i = 1; $i <= $totalPages; $i++): 
-                                // Show limited pages around current page
-                                if($i == 1 || $i == $totalPages || ($i >= $page-2 && $i <= $page+2)): ?>
-                                    <a href="?page=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>&plan=<?php echo urlencode($membershipPlan); ?>" 
-                                       class="page-link <?php echo $i == $page ? 'active' : ''; ?>">
-                                        <?php echo $i; ?>
-                                    </a>
-                                <?php elseif($i == $page-3 || $i == $page+3): ?>
-                                    <span class="page-link">...</span>
+                            <?php 
+                            // Show page numbers with ellipsis
+                            $startPage = max(1, $page - 2);
+                            $endPage = min($totalPages, $page + 2);
+                            
+                            // Always show first page
+                            if($startPage > 1): ?>
+                                <a href="?page=1&search=<?php echo urlencode($search); ?>&plan=<?php echo urlencode($membershipPlan); ?>" 
+                                   class="page-link <?php echo (1 == $page) ? 'active' : ''; ?>">
+                                    1
+                                </a>
+                                <?php if($startPage > 2): ?>
+                                    <span class="page-link disabled">...</span>
+                                <?php endif;
+                            endif;
+                            
+                            // Show page range
+                            for($i = $startPage; $i <= $endPage; $i++): ?>
+                                <a href="?page=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>&plan=<?php echo urlencode($membershipPlan); ?>" 
+                                   class="page-link <?php echo ($i == $page) ? 'active' : ''; ?>">
+                                    <?php echo $i; ?>
+                                </a>
+                            <?php endfor;
+                            
+                            // Always show last page
+                            if($endPage < $totalPages): 
+                                if($endPage < $totalPages - 1): ?>
+                                    <span class="page-link disabled">...</span>
                                 <?php endif; ?>
-                            <?php endfor; ?>
-                            
-                            // Next button
-                            <?php if($page < $totalPages): ?>
-                                <a href="?page=<?php echo $page+1; ?>&search=<?php echo urlencode($search); ?>&plan=<?php echo urlencode($membershipPlan); ?>" 
-                                   class="page-link">
-                                    <i class="fas fa-chevron-right"></i>
+                                <a href="?page=<?php echo $totalPages; ?>&search=<?php echo urlencode($search); ?>&plan=<?php echo urlencode($membershipPlan); ?>" 
+                                   class="page-link <?php echo ($totalPages == $page) ? 'active' : ''; ?>">
+                                    <?php echo $totalPages; ?>
                                 </a>
                             <?php endif; ?>
+                            
+                            <?php
+                            // Next button
+                            $nextClass = ($page >= $totalPages) ? 'disabled' : '';
+                            $nextPage = ($page < $totalPages) ? $page + 1 : $totalPages;
+                            ?>
+                            <a href="?page=<?php echo $nextPage; ?>&search=<?php echo urlencode($search); ?>&plan=<?php echo urlencode($membershipPlan); ?>" 
+                               class="page-link <?php echo $nextClass; ?>">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </a>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -442,8 +514,13 @@ try {
         document.getElementById('searchInput').addEventListener('keyup', function(e) {
             if(e.key === 'Enter') {
                 const search = this.value;
-                window.location.href = 'admin-members.php?search=' + encodeURIComponent(search);
+                window.location.href = 'admin-members.php?page=1&search=' + encodeURIComponent(search);
             }
+        });
+
+        // Auto-submit filter form when select changes
+        document.querySelector('select[name="plan"]').addEventListener('change', function() {
+            this.form.submit();
         });
     </script>
 </body>
