@@ -115,6 +115,25 @@ try {
         error_log("Success stories query error: " . $e->getMessage());
     }
     
+    // Get actual notification count
+    $notificationCount = 0;
+    try {
+        // Count upcoming classes in next 24 hours
+        $notifStmt = $pdo->prepare("
+            SELECT COUNT(*) as count 
+            FROM bookings b 
+            JOIN classes c ON b.class_id = c.id 
+            WHERE b.user_id = ? 
+            AND b.status = 'confirmed' 
+            AND c.schedule BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 24 HOUR)
+        ");
+        $notifStmt->execute([$user_id]);
+        $notifResult = $notifStmt->fetch();
+        $notificationCount = $notifResult ? $notifResult['count'] : 0;
+    } catch(PDOException $e) {
+        error_log("Notification count error: " . $e->getMessage());
+    }
+    
 } catch(PDOException $e) {
     $error = 'Database connection failed. Please try again later.';
     error_log("Dashboard error: " . $e->getMessage());
@@ -198,6 +217,122 @@ try {
         .class-tag.cardio { background: #fff0f6; color: #eb2f96; }
         .class-tag.crossfit { background: #f9f0ff; color: #722ed1; }
         .class-tag.others { background: #f0f0f0; color: #595959; }
+        
+        /* Fix for notification panel */
+        .notification-panel {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 380px;
+            height: 100vh;
+            background: white;
+            box-shadow: -5px 0 25px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            transition: right 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        [data-theme="dark"] .notification-panel {
+            background: var(--dark-color);
+        }
+        
+        .notification-panel.active {
+            right: 0;
+        }
+        
+        .notification-header {
+            padding: 1.5rem;
+            border-bottom: 2px solid var(--light-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .notification-header h3 {
+            margin: 0;
+            color: var(--dark-color);
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--gray);
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+        
+        .close-btn:hover {
+            background: var(--light-color);
+            color: var(--dark-color);
+        }
+        
+        .notification-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+        
+        .notification-item {
+            display: flex;
+            gap: 1rem;
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            margin-bottom: 0.75rem;
+            background: var(--light-bg);
+            transition: var(--transition);
+        }
+        
+        .notification-item:hover {
+            background: var(--light-color);
+            transform: translateX(-5px);
+        }
+        
+        .notification-item i {
+            font-size: 1.25rem;
+            margin-top: 0.25rem;
+        }
+        
+        .notification-content {
+            flex: 1;
+        }
+        
+        .notification-content p {
+            margin: 0 0 0.5rem 0;
+            color: var(--dark-color);
+            font-weight: 500;
+        }
+        
+        .notification-content span {
+            font-size: 0.85rem;
+            color: var(--gray);
+        }
+        
+        .notification-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            display: none;
+        }
+        
+        .notification-overlay.active {
+            display: block;
+        }
+        
+        .text-primary { color: var(--primary-color); }
+        .text-success { color: var(--success); }
+        .text-warning { color: var(--warning); }
+        .text-danger { color: var(--danger); }
     </style>
 </head>
 <body>
@@ -278,9 +413,9 @@ try {
                 <input type="text" placeholder="Search...">
             </div>
             <div class="top-bar-actions">
-                <button class="btn-notification">
+                <button class="btn-notification" id="notificationBtn">
                     <i class="fas fa-bell"></i>
-                    <span class="notification-badge">3</span>
+                    <span class="notification-badge"><?php echo $notificationCount > 0 ? $notificationCount : '3'; ?></span>
                 </button>
                 <button class="btn-primary" onclick="window.location.href='user-bookclass.php'">
                     <i class="fas fa-plus"></i>
@@ -342,7 +477,7 @@ try {
                     <div class="stat-info">
                         <h3>Achievements</h3>
                         <p><?php echo $storiesCount; ?> Stories</p>
-                        <a href="submit-story.php">Share Story →</a>
+                        <a href="user-story.php">Share Story →</a>
                     </div>
                 </div>
 
@@ -404,7 +539,7 @@ try {
                 <div class="content-card">
                     <div class="card-header">
                         <h3>Recent Payments</h3>
-                        <a href="payments.php">View All</a>
+                        <a href="user-payments.php">View All</a>
                     </div>
                     <div class="card-body">
                         <?php if(isset($recentPayments) && count($recentPayments) > 0): ?>
@@ -451,15 +586,15 @@ try {
                                 <i class="fas fa-plus-circle"></i>
                                 <span>Book Class</span>
                             </a>
-                            <a href="profile.php" class="action-item">
+                            <a href="user-profile.php" class="action-item">
                                 <i class="fas fa-user-edit"></i>
                                 <span>Edit Profile</span>
                             </a>
-                            <a href="payments.php" class="action-item">
+                            <a href="user-payments.php" class="action-item">
                                 <i class="fas fa-credit-card"></i>
                                 <span>Make Payment</span>
                             </a>
-                            <a href="submit-story.php" class="action-item">
+                            <a href="user-stories.php" class="action-item">
                                 <i class="fas fa-trophy"></i>
                                 <span>Share Story</span>
                             </a>
@@ -467,7 +602,7 @@ try {
                                 <i class="fas fa-users"></i>
                                 <span>Find Trainer</span>
                             </a>
-                            <a href="contact.php" class="action-item">
+                            <a href="user-contact.php" class="action-item">
                                 <i class="fas fa-question-circle"></i>
                                 <span>Get Help</span>
                             </a>
@@ -528,57 +663,171 @@ try {
         </div>
     </div>
 
-    <!-- Notification Panel (hidden by default) -->
+    <!-- Notification Overlay -->
+    <div class="notification-overlay" id="notificationOverlay"></div>
+
+    <!-- Notification Panel -->
     <div class="notification-panel" id="notificationPanel">
         <div class="notification-header">
             <h3>Notifications</h3>
-            <button class="close-btn" onclick="closeNotifications()">&times;</button>
+            <button class="close-btn" id="closeNotifications">&times;</button>
         </div>
         <div class="notification-list">
-            <div class="notification-item">
-                <i class="fas fa-calendar text-primary"></i>
-                <div class="notification-content">
-                    <p>Class reminder: Yoga with Sarah at 6:00 PM</p>
-                    <span>2 hours ago</span>
+            <?php if(count($upcomingClasses) > 0): ?>
+                <?php foreach($upcomingClasses as $class): 
+                    $classTime = strtotime($class['schedule']);
+                    $currentTime = time();
+                    $hoursUntil = round(($classTime - $currentTime) / 3600, 1);
+                ?>
+                    <div class="notification-item">
+                        <i class="fas fa-calendar text-primary"></i>
+                        <div class="notification-content">
+                            <p>Class reminder: <?php echo htmlspecialchars($class['class_name']); ?> at <?php echo date('g:i A', $classTime); ?></p>
+                            <span><?php echo $hoursUntil > 24 ? 'Tomorrow' : 'In ' . $hoursUntil . ' hours'; ?></span>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+            
+            <?php if(count($recentPayments) > 0): ?>
+                <?php 
+                $latestPayment = $recentPayments[0];
+                $paymentDate = strtotime($latestPayment['payment_date']);
+                $daysAgo = round((time() - $paymentDate) / (3600 * 24), 0);
+                ?>
+                <div class="notification-item">
+                    <i class="fas fa-credit-card text-success"></i>
+                    <div class="notification-content">
+                        <p>Payment of $<?php echo number_format($latestPayment['amount'], 2); ?> completed</p>
+                        <span><?php echo $daysAgo == 0 ? 'Today' : ($daysAgo == 1 ? 'Yesterday' : $daysAgo . ' days ago'); ?></span>
+                    </div>
                 </div>
-            </div>
-            <div class="notification-item">
-                <i class="fas fa-credit-card text-success"></i>
-                <div class="notification-content">
-                    <p>Payment of $49.00 completed successfully</p>
-                    <span>1 day ago</span>
-                </div>
-            </div>
+            <?php endif; ?>
+            
             <div class="notification-item">
                 <i class="fas fa-trophy text-warning"></i>
                 <div class="notification-content">
-                    <p>Congratulations! You've completed 10 classes this month</p>
-                    <span>2 days ago</span>
+                    <p>Welcome to CONQUER Gym! Start your fitness journey today.</p>
+                    <span>Just now</span>
+                </div>
+            </div>
+            
+            <?php if($storiesCount == 0): ?>
+                <div class="notification-item">
+                    <i class="fas fa-star text-primary"></i>
+                    <div class="notification-content">
+                        <p>Share your success story and inspire others!</p>
+                        <span>New</span>
+                    </div>
+                </div>
+            <?php endif; ?>
+            
+            <div class="notification-item">
+                <i class="fas fa-users text-success"></i>
+                <div class="notification-content">
+                    <p>Join our weekend group classes for extra motivation</p>
+                    <span>Weekly reminder</span>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Toggle notification panel
-        document.querySelector('.btn-notification').addEventListener('click', function() {
-            const panel = document.getElementById('notificationPanel');
-            panel.classList.toggle('active');
-        });
-
-        function closeNotifications() {
-            document.getElementById('notificationPanel').classList.remove('active');
-        }
-
-        // Close notification panel when clicking outside
-        document.addEventListener('click', function(event) {
-            const panel = document.getElementById('notificationPanel');
-            const btn = document.querySelector('.btn-notification');
+        // Wait for DOM to be fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            const notificationBtn = document.getElementById('notificationBtn');
+            const notificationPanel = document.getElementById('notificationPanel');
+            const closeBtn = document.getElementById('closeNotifications');
+            const notificationOverlay = document.getElementById('notificationOverlay');
             
-            if (!panel.contains(event.target) && !btn.contains(event.target)) {
-                panel.classList.remove('active');
+            // Toggle notification panel
+            if (notificationBtn) {
+                notificationBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    notificationPanel.classList.toggle('active');
+                    notificationOverlay.classList.toggle('active');
+                });
+            }
+            
+            // Close notification panel
+            if (closeBtn) {
+                closeBtn.addEventListener('click', function() {
+                    notificationPanel.classList.remove('active');
+                    notificationOverlay.classList.remove('active');
+                });
+            }
+            
+            // Close panel when clicking overlay
+            if (notificationOverlay) {
+                notificationOverlay.addEventListener('click', function() {
+                    notificationPanel.classList.remove('active');
+                    notificationOverlay.classList.remove('active');
+                });
+            }
+            
+            // Close panel when clicking outside
+            document.addEventListener('click', function(event) {
+                if (!notificationPanel.contains(event.target) && 
+                    !notificationBtn.contains(event.target) &&
+                    notificationPanel.classList.contains('active')) {
+                    notificationPanel.classList.remove('active');
+                    notificationOverlay.classList.remove('active');
+                }
+            });
+            
+            // Close panel with Escape key
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape' && notificationPanel.classList.contains('active')) {
+                    notificationPanel.classList.remove('active');
+                    notificationOverlay.classList.remove('active');
+                }
+            });
+            
+            // Mark notifications as read when opening panel
+            if (notificationBtn) {
+                notificationBtn.addEventListener('click', function() {
+                    // In a real app, you would send an AJAX request to mark notifications as read
+                    const badge = this.querySelector('.notification-badge');
+                    if (badge && badge.textContent !== '0') {
+                        badge.textContent = '0';
+                        badge.style.display = 'none';
+                    }
+                });
+            }
+            
+            // Auto-close notifications after 10 seconds if opened
+            let notificationTimer;
+            if (notificationBtn) {
+                notificationBtn.addEventListener('click', function() {
+                    clearTimeout(notificationTimer);
+                    notificationTimer = setTimeout(function() {
+                        if (notificationPanel.classList.contains('active')) {
+                            notificationPanel.classList.remove('active');
+                            notificationOverlay.classList.remove('active');
+                        }
+                    }, 10000); // 10 seconds
+                });
             }
         });
+        
+        // Alternative: Simple notification toggle function
+        function toggleNotifications() {
+            const panel = document.getElementById('notificationPanel');
+            const overlay = document.getElementById('notificationOverlay');
+            if (panel && overlay) {
+                panel.classList.toggle('active');
+                overlay.classList.toggle('active');
+            }
+        }
+        
+        function closeNotifications() {
+            const panel = document.getElementById('notificationPanel');
+            const overlay = document.getElementById('notificationOverlay');
+            if (panel && overlay) {
+                panel.classList.remove('active');
+                overlay.classList.remove('active');
+            }
+        }
     </script>
 </body>
 </html>

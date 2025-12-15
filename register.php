@@ -7,25 +7,40 @@ if(isset($_SESSION['user_id'])) {
     exit();
 }
 
+// Initialize database connection
+$pdo = null;
 $error = '';
 $success = '';
 
+try {
+    $database = Database::getInstance();
+    $pdo = $database->getConnection();
+} catch(PDOException $e) {
+    $error = 'Database connection failed. Please try again later.';
+    error_log("Database error: " . $e->getMessage());
+}
+
 if($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $full_name = trim($_POST['full_name']);
-    $email = trim($_POST['email']);
-    $username = trim($_POST['username']);
-    $password = $_POST['password'];
-    $confirm_password = $_POST['confirm_password'];
+    $full_name = trim($_POST['full_name'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $username = trim($_POST['username'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $confirm_password = $_POST['confirm_password'] ?? '';
     $phone = trim($_POST['phone'] ?? '');
     $plan = $_POST['plan'] ?? 'warrior';
+    $terms = isset($_POST['terms']) ? true : false;
     
     // Validation
     if(empty($full_name) || empty($email) || empty($username) || empty($password)) {
         $error = 'Please fill in all required fields';
+    } elseif(!$terms) {
+        $error = 'Please agree to the Terms of Service and Privacy Policy';
     } elseif($password !== $confirm_password) {
         $error = 'Passwords do not match';
     } elseif(strlen($password) < 6) {
         $error = 'Password must be at least 6 characters long';
+    } elseif(!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = 'Please enter a valid email address';
     } else {
         try {
             // Check if email already exists
@@ -45,8 +60,8 @@ if($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     // Insert user
                     $stmt = $pdo->prepare("
-                        INSERT INTO users (username, email, password_hash, full_name, user_type) 
-                        VALUES (?, ?, ?, ?, 'member')
+                        INSERT INTO users (username, email, password_hash, full_name, user_type, created_at, is_active) 
+                        VALUES (?, ?, ?, ?, 'member', NOW(), 1)
                     ");
                     
                     if($stmt->execute([$username, $email, $password_hash, $full_name])) {
@@ -54,12 +69,13 @@ if($_SERVER['REQUEST_METHOD'] === 'POST') {
                         
                         // Insert gym member record
                         $memberStmt = $pdo->prepare("
-                            INSERT INTO gym_members (Name, Age, MembershipPlan, ContactNumber, Email) 
-                            VALUES (?, ?, ?, ?, ?)
+                            INSERT INTO gym_members (Name, Age, MembershipPlan, ContactNumber, Email, MembershipStatus, JoinDate) 
+                            VALUES (?, ?, ?, ?, ?, 'Active', NOW())
                         ");
                         
                         // For simplicity, set age to 25. You can add age field to form if needed
-                        $memberStmt->execute([$full_name, 25, $plan, $phone, $email]);
+                        $age = 25;
+                        $memberStmt->execute([$full_name, $age, ucfirst($plan), $phone, $email]);
                         
                         // Auto-login after registration
                         $_SESSION['user_id'] = $user_id;
@@ -72,13 +88,15 @@ if($_SERVER['REQUEST_METHOD'] === 'POST') {
                         
                         // Redirect to dashboard after 2 seconds
                         header('Refresh: 2; URL=user-dashboard.php');
+                        exit();
                     } else {
                         $error = 'Registration failed. Please try again.';
                     }
                 }
             }
         } catch(PDOException $e) {
-            $error = 'Database error: ' . $e->getMessage();
+            $error = 'Registration error. Please try again.';
+            error_log("Registration error: " . $e->getMessage());
         }
     }
 }
@@ -100,6 +118,85 @@ if($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     <!-- CSS -->
     <link rel="stylesheet" href="register-style.css">
+    
+    <style>
+        /* Additional inline styles for password strength */
+        .password-strength-container {
+            margin-top: 5px;
+        }
+        
+        .password-strength {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.85rem;
+            margin-top: 5px;
+        }
+        
+        .strength-bar {
+            height: 5px;
+            border-radius: 3px;
+            flex-grow: 1;
+            background: #eee;
+        }
+        
+        .strength-bar.weak {
+            background: #ff4757;
+            width: 33%;
+        }
+        
+        .strength-bar.medium {
+            background: #ffa502;
+            width: 66%;
+        }
+        
+        .strength-bar.strong {
+            background: #2ed573;
+            width: 100%;
+        }
+        
+        .password-match {
+            font-size: 0.85rem;
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .password-match.match {
+            color: #2ed573;
+        }
+        
+        .password-match.no-match {
+            color: #ff4757;
+        }
+        
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-weight: 500;
+        }
+        
+        .alert-error {
+            background: rgba(255, 71, 87, 0.1);
+            color: #ff4757;
+            border: 1px solid rgba(255, 71, 87, 0.2);
+        }
+        
+        .alert-success {
+            background: rgba(46, 213, 115, 0.1);
+            color: #2ed573;
+            border: 1px solid rgba(46, 213, 115, 0.2);
+        }
+        
+        .alert i {
+            font-size: 1.2rem;
+        }
+    </style>
 </head>
 <body>
     <div class="register-container">
@@ -151,7 +248,9 @@ if($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="testimonial">
                 <p>"CONQUER Gym transformed my life. The community and trainers are amazing!"</p>
                 <div class="testimonial-author">
-                    <img src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&q=80" alt="Sarah M.">
+                    <div class="author-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
                     <div>
                         <h4>Sarah M.</h4>
                         <span>Member since 2022</span>
@@ -170,15 +269,24 @@ if($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php if($error): ?>
                     <div class="alert alert-error">
                         <i class="fas fa-exclamation-circle"></i>
-                        <?php echo htmlspecialchars($error); ?>
+                        <div>
+                            <?php echo htmlspecialchars($error); ?>
+                            <?php if(strpos($error, 'Database connection') !== false): ?>
+                                <p style="font-size: 0.9rem; margin-top: 5px; opacity: 0.8;">
+                                    Please check your database configuration in config/database.php
+                                </p>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 <?php endif; ?>
                 
                 <?php if($success): ?>
                     <div class="alert alert-success">
                         <i class="fas fa-check-circle"></i>
-                        <?php echo htmlspecialchars($success); ?>
-                        <p>Redirecting to your dashboard...</p>
+                        <div>
+                            <?php echo htmlspecialchars($success); ?>
+                            <p style="font-size: 0.9rem; margin-top: 5px;">Redirecting to your dashboard...</p>
+                        </div>
                     </div>
                 <?php endif; ?>
                 
@@ -246,6 +354,7 @@ if($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <i class="fas fa-eye"></i>
                                 </button>
                                 <small class="hint">Minimum 6 characters</small>
+                                <div class="password-strength-container" id="password-strength-container"></div>
                             </div>
                             
                             <div class="input-group">
@@ -258,6 +367,7 @@ if($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <button type="button" class="toggle-password" onclick="togglePassword('confirm_password')">
                                     <i class="fas fa-eye"></i>
                                 </button>
+                                <div class="password-match-container" id="password-match-container"></div>
                             </div>
                         </div>
                     </div>
@@ -353,7 +463,7 @@ if($_SERVER['REQUEST_METHOD'] === 'POST') {
                             Facebook
                         </button>
                     </div>
-                    <a href="index.html" class="back-home">
+                    <a href="index.php" class="back-home">
                         <i class="fas fa-arrow-left"></i>
                         Back to Home
                     </a>
@@ -399,6 +509,17 @@ if($_SERVER['REQUEST_METHOD'] === 'POST') {
         const confirmPasswordInput = document.getElementById('confirm_password');
         
         if(passwordInput) {
+            // Create password strength container
+            const strengthContainer = document.createElement('div');
+            strengthContainer.id = 'password-strength';
+            strengthContainer.className = 'password-strength';
+            document.getElementById('password-strength-container').appendChild(strengthContainer);
+            
+            // Create password match container
+            const matchContainer = document.createElement('div');
+            matchContainer.id = 'password-match';
+            document.getElementById('password-match-container').appendChild(matchContainer);
+            
             passwordInput.addEventListener('input', function() {
                 const password = this.value;
                 const strength = checkPasswordStrength(password);
@@ -428,11 +549,8 @@ if($_SERVER['REQUEST_METHOD'] === 'POST') {
             const strengthBar = document.getElementById('password-strength');
             if(!strengthBar) return;
             
-            strengthBar.className = 'password-strength';
-            if(strength === 0) {
-                strengthBar.innerHTML = '';
-                return;
-            }
+            strengthBar.innerHTML = '';
+            if(strength === 0) return;
             
             let strengthText = 'Weak';
             let strengthClass = 'weak';
@@ -445,10 +563,14 @@ if($_SERVER['REQUEST_METHOD'] === 'POST') {
                 strengthClass = 'medium';
             }
             
-            strengthBar.innerHTML = `
-                <div class="strength-bar ${strengthClass}"></div>
-                <span>${strengthText}</span>
-            `;
+            const bar = document.createElement('div');
+            bar.className = `strength-bar ${strengthClass}`;
+            
+            const text = document.createElement('span');
+            text.textContent = strengthText;
+            
+            strengthBar.appendChild(bar);
+            strengthBar.appendChild(text);
         }
         
         function checkPasswordMatch() {
@@ -458,6 +580,8 @@ if($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             if(!matchIndicator) return;
             
+            matchIndicator.className = 'password-match';
+            
             if(!confirmPassword) {
                 matchIndicator.innerHTML = '';
                 return;
@@ -465,10 +589,10 @@ if($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             if(password === confirmPassword) {
                 matchIndicator.innerHTML = '<i class="fas fa-check-circle"></i> Passwords match';
-                matchIndicator.className = 'password-match match';
+                matchIndicator.classList.add('match');
             } else {
                 matchIndicator.innerHTML = '<i class="fas fa-times-circle"></i> Passwords do not match';
-                matchIndicator.className = 'password-match no-match';
+                matchIndicator.classList.add('no-match');
             }
         }
         
@@ -476,24 +600,44 @@ if($_SERVER['REQUEST_METHOD'] === 'POST') {
         document.getElementById('registerForm').addEventListener('submit', function(e) {
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirm_password').value;
-            const terms = document.getElementById('terms').checked;
+            const terms = document.getElementById('terms');
             
-            if(!terms) {
+            if(!terms.checked) {
                 e.preventDefault();
                 alert('Please agree to the Terms of Service and Privacy Policy');
+                terms.focus();
                 return false;
             }
             
             if(password !== confirmPassword) {
                 e.preventDefault();
                 alert('Passwords do not match');
+                document.getElementById('confirm_password').focus();
                 return false;
             }
             
             if(password.length < 6) {
                 e.preventDefault();
                 alert('Password must be at least 6 characters long');
+                document.getElementById('password').focus();
                 return false;
+            }
+            
+            return true;
+        });
+        
+        // Auto-select warrior plan if none selected
+        document.addEventListener('DOMContentLoaded', function() {
+            const planRadios = document.querySelectorAll('input[name="plan"]');
+            let planSelected = false;
+            
+            planRadios.forEach(radio => {
+                if(radio.checked) planSelected = true;
+            });
+            
+            if(!planSelected && planRadios.length > 0) {
+                planRadios[0].checked = true;
+                selectPlan('warrior');
             }
         });
     </script>
