@@ -13,45 +13,33 @@ if(!isset($_SESSION['user_id']) || !isset($_SESSION['user_type']) || $_SESSION['
     exit();
 }
 
-// Use hardcoded sample trainers data
-$trainers = [
-    [
-        'id' => 1,
-        'full_name' => 'Alex Morgan',
-        'email' => 'alex.morgan@conquergym.com',
-        'specialization' => 'Strength & Conditioning',
-        'certifications' => 'NASM Certified',
-        'experience_years' => 10,
-        'rating' => 4.8,
-        'bio' => 'Expert in strength training and conditioning with 10+ years of experience. Specializes in functional training and injury prevention.',
-        'total_classes' => 150,
-        'phone' => '(555) 123-4567'
-    ],
-    [
-        'id' => 2,
-        'full_name' => 'Sarah Chen',
-        'email' => 'sarah.chen@conquergym.com',
-        'specialization' => 'Yoga & Mobility',
-        'certifications' => 'RYT 500 Certified',
-        'experience_years' => 8,
-        'rating' => 5.0,
-        'bio' => 'RYT 500 certified yoga instructor with 8 years of teaching experience. Specializes in Vinyasa, Hatha, and restorative yoga.',
-        'total_classes' => 200,
-        'phone' => '(555) 234-5678'
-    ],
-    [
-        'id' => 3,
-        'full_name' => 'Marcus Johnson',
-        'email' => 'marcus.johnson@conquergym.com',
-        'specialization' => 'Bodybuilding & Nutrition',
-        'certifications' => 'IFBB Pro',
-        'experience_years' => 15,
-        'rating' => 5.0,
-        'bio' => 'IFBB Pro bodybuilder with 15 years of experience in bodybuilding and nutrition coaching. Multiple competition wins.',
-        'total_classes' => 180,
-        'phone' => '(555) 345-6789'
-    ]
-];
+// Fetch trainers from database with user information
+$trainers = [];
+try {
+    $query = "
+        SELECT 
+            t.*, 
+            u.full_name, 
+            u.email, 
+            u.username,
+            u.is_active,
+            u.created_at,
+            COUNT(c.id) as total_classes
+        FROM trainers t
+        JOIN users u ON t.user_id = u.id
+        LEFT JOIN classes c ON t.id = c.trainer_id
+        WHERE u.user_type = 'trainer'
+        GROUP BY t.id
+        ORDER BY u.full_name ASC
+    ";
+    
+    $trainers = $pdo->query($query)->fetchAll(PDO::FETCH_ASSOC);
+    
+} catch(PDOException $e) {
+    error_log("Fetch trainers error: " . $e->getMessage());
+    // Fallback to empty array
+    $trainers = [];
+}
 
 $totalTrainers = count($trainers);
 ?>
@@ -297,46 +285,68 @@ $totalTrainers = count($trainers);
         }
         
         /* Individual trainer colors */
-        .trainer-1 .trainer-header {
+        .trainer-card:nth-child(3n+1) .trainer-header {
             background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
         }
         
-        .trainer-1 .trainer-avatar {
+        .trainer-card:nth-child(3n+1) .trainer-avatar {
             background: white;
             color: #ff6b6b;
         }
         
-        .trainer-1 .rating-stars i,
-        .trainer-1 .trainer-info i {
+        .trainer-card:nth-child(3n+1) .rating-stars i,
+        .trainer-card:nth-child(3n+1) .trainer-info i {
             color: #ff6b6b;
         }
         
-        .trainer-2 .trainer-header {
+        .trainer-card:nth-child(3n+2) .trainer-header {
             background: linear-gradient(135deg, #2ed573 0%, #1dd1a1 100%);
         }
         
-        .trainer-2 .trainer-avatar {
+        .trainer-card:nth-child(3n+2) .trainer-avatar {
             background: white;
             color: #2ed573;
         }
         
-        .trainer-2 .rating-stars i,
-        .trainer-2 .trainer-info i {
+        .trainer-card:nth-child(3n+2) .rating-stars i,
+        .trainer-card:nth-child(3n+2) .trainer-info i {
             color: #2ed573;
         }
         
-        .trainer-3 .trainer-header {
+        .trainer-card:nth-child(3n+3) .trainer-header {
             background: linear-gradient(135deg, #3742fa 0%, #5352ed 100%);
         }
         
-        .trainer-3 .trainer-avatar {
+        .trainer-card:nth-child(3n+3) .trainer-avatar {
             background: white;
             color: #3742fa;
         }
         
-        .trainer-3 .rating-stars i,
-        .trainer-3 .trainer-info i {
+        .trainer-card:nth-child(3n+3) .rating-stars i,
+        .trainer-card:nth-child(3n+3) .trainer-info i {
             color: #3742fa;
+        }
+        
+        /* Trainer status indicator */
+        .status-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            z-index: 3;
+        }
+        
+        .status-active {
+            background: rgba(46, 213, 115, 0.95);
+            color: white;
+        }
+        
+        .status-inactive {
+            background: rgba(255, 165, 2, 0.95);
+            color: white;
         }
         
         /* Responsive */
@@ -387,6 +397,34 @@ $totalTrainers = count($trainers);
             border-color: #ff4757;
             box-shadow: 0 0 0 3px rgba(255, 71, 87, 0.1);
         }
+        
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+        
+        .empty-state i {
+            color: #e9ecef;
+            margin-bottom: 1.5rem;
+        }
+        
+        .empty-state h3 {
+            color: #495057;
+            margin-bottom: 1rem;
+        }
+        
+        .empty-state p {
+            color: #6c757d;
+            margin-bottom: 2rem;
+        }
+        
+        /* No results message */
+        .no-results {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 3rem;
+        }
     </style>
 </head>
 <body>
@@ -416,6 +454,10 @@ $totalTrainers = count($trainers);
                         <h3><?php echo $totalTrainers; ?></h3>
                         <p>Total Trainers</p>
                     </div>
+                    <div class="stat">
+                        <h3><?php echo count(array_filter($trainers, fn($t) => $t['is_active'] == 1)); ?></h3>
+                        <p>Active Trainers</p>
+                    </div>
                 </div>
             </div>
 
@@ -430,20 +472,28 @@ $totalTrainers = count($trainers);
                     <?php if($totalTrainers > 0): ?>
                         <div class="trainer-grid" id="trainerGrid">
                             <?php foreach($trainers as $index => $trainer): 
-                                $rating = floatval($trainer['rating']);
+                                $rating = floatval($trainer['rating'] ?? 0);
                                 $fullStars = floor($rating);
                                 $hasHalfStar = ($rating - $fullStars) >= 0.3;
-                                $trainerClass = 'trainer-' . ($index + 1);
+                                $isActive = $trainer['is_active'] == 1;
+                                $totalClasses = $trainer['total_classes'] ?? 0;
+                                $experienceYears = $trainer['years_experience'] ?? 0;
                             ?>
-                                <div class="trainer-card <?php echo $trainerClass; ?>" data-trainer-id="<?php echo $trainer['id']; ?>">
+                                <div class="trainer-card" data-trainer-id="<?php echo $trainer['id']; ?>">
                                     <div class="trainer-header">
+                                        <!-- Status Badge -->
+                                        <div class="status-badge <?php echo $isActive ? 'status-active' : 'status-inactive'; ?>">
+                                            <?php echo $isActive ? 'ACTIVE' : 'INACTIVE'; ?>
+                                        </div>
+                                        
                                         <div class="trainer-avatar">
                                             <i class="fas fa-user-tie"></i>
                                         </div>
-                                        <h3><?php echo htmlspecialchars($trainer['full_name']); ?></h3>
-                                        <span class="specialization-tag"><?php echo htmlspecialchars($trainer['specialization']); ?></span>
+                                        <h3><?php echo htmlspecialchars($trainer['full_name'] ?? 'Unknown Trainer'); ?></h3>
+                                        <span class="specialization-tag"><?php echo htmlspecialchars($trainer['specialty'] ?? 'Not Specified'); ?></span>
                                         
                                         <!-- Rating display -->
+                                        <?php if($rating > 0): ?>
                                         <div class="rating-container">
                                             <div class="rating-value"><?php echo number_format($rating, 1); ?>/5.0</div>
                                             <div class="rating-stars">
@@ -458,22 +508,25 @@ $totalTrainers = count($trainers);
                                                 <?php endfor; ?>
                                             </div>
                                         </div>
+                                        <?php endif; ?>
                                     </div>
                                     <div class="trainer-body">
                                         <div class="trainer-info">
-                                            <p><i class="fas fa-envelope"></i> <span><?php echo htmlspecialchars($trainer['email']); ?></span></p>
-                                            <p><i class="fas fa-certificate"></i> <span><strong>Certifications:</strong> <?php echo htmlspecialchars($trainer['certifications']); ?></span></p>
-                                            <p><i class="fas fa-history"></i> <span><strong>Experience:</strong> <?php echo $trainer['experience_years']; ?>+ years</span></p>
-                                            <p><i class="fas fa-info-circle"></i> <span><?php echo htmlspecialchars($trainer['bio']); ?></span></p>
+                                            <p><i class="fas fa-envelope"></i> <span><?php echo htmlspecialchars($trainer['email'] ?? 'No email'); ?></span></p>
+                                            <p><i class="fas fa-certificate"></i> <span><strong>Certifications:</strong> <?php echo htmlspecialchars($trainer['certification'] ?? 'Not Certified'); ?></span></p>
+                                            <p><i class="fas fa-history"></i> <span><strong>Experience:</strong> <?php echo $experienceYears; ?> years</span></p>
+                                            <?php if(!empty($trainer['bio'])): ?>
+                                                <p><i class="fas fa-info-circle"></i> <span><?php echo htmlspecialchars(substr($trainer['bio'], 0, 120)); ?><?php echo strlen($trainer['bio']) > 120 ? '...' : ''; ?></span></p>
+                                            <?php endif; ?>
                                         </div>
                                         
                                         <div class="trainer-stats">
                                             <div class="stat-item">
-                                                <div class="stat-value"><?php echo $trainer['experience_years']; ?>+</div>
+                                                <div class="stat-value"><?php echo $experienceYears; ?></div>
                                                 <small>Years</small>
                                             </div>
                                             <div class="stat-item">
-                                                <div class="stat-value"><?php echo $trainer['total_classes']; ?></div>
+                                                <div class="stat-value"><?php echo $totalClasses; ?></div>
                                                 <small>Classes</small>
                                             </div>
                                             <div class="stat-item">
@@ -489,7 +542,7 @@ $totalTrainers = count($trainers);
                                             <a href="admin-edit-trainer.php?id=<?php echo $trainer['id']; ?>" class="btn-sm">
                                                 <i class="fas fa-edit"></i> Edit
                                             </a>
-                                            <button class="btn-sm btn-danger" onclick="confirmDelete(<?php echo $trainer['id']; ?>)">
+                                            <button class="btn-sm btn-danger" onclick="confirmDelete(<?php echo $trainer['id']; ?>, '<?php echo htmlspecialchars($trainer['full_name']); ?>')">
                                                 <i class="fas fa-trash"></i> Delete
                                             </button>
                                         </div>
@@ -499,9 +552,9 @@ $totalTrainers = count($trainers);
                         </div>
                     <?php else: ?>
                         <div class="empty-state">
-                            <i class="fas fa-users fa-4x" style="color: #e9ecef; margin-bottom: 1.5rem;"></i>
-                            <h3 style="color: #495057; margin-bottom: 1rem;">No Trainers Found</h3>
-                            <p style="color: #6c757d; margin-bottom: 2rem;">Add your first trainer to get started</p>
+                            <i class="fas fa-users fa-4x"></i>
+                            <h3>No Trainers Found</h3>
+                            <p>Add your first trainer to get started</p>
                             <button class="btn-primary" onclick="window.location.href='admin-add-trainer.php'">
                                 <i class="fas fa-plus"></i> Add Your First Trainer
                             </button>
@@ -513,11 +566,10 @@ $totalTrainers = count($trainers);
     </div>
 
     <script>
-        function confirmDelete(trainerId) {
-            if(confirm('Are you sure you want to delete trainer #' + trainerId + '? This action cannot be undone.')) {
-                // In a real app, you would make an AJAX call or redirect to delete script
-                alert('Trainer #' + trainerId + ' would be deleted (demo only).');
-                // window.location.href = 'admin-delete-trainer.php?id=' + trainerId;
+        function confirmDelete(trainerId, trainerName) {
+            if(confirm(`Are you sure you want to delete trainer "${trainerName}"? This action cannot be undone.`)) {
+                // Redirect to delete script
+                window.location.href = 'admin-delete-trainer.php?id=' + trainerId;
             }
         }
         
@@ -533,7 +585,10 @@ $totalTrainers = count($trainers);
                 const specialization = card.querySelector('.specialization-tag').textContent.toLowerCase();
                 const email = card.querySelector('.trainer-info p:nth-child(1) span').textContent.toLowerCase();
                 const certifications = card.querySelector('.trainer-info p:nth-child(2) span').textContent.toLowerCase();
-                const bio = card.querySelector('.trainer-info p:nth-child(4) span').textContent.toLowerCase();
+                
+                // Get bio if exists
+                const bioElement = card.querySelector('.trainer-info p:nth-child(4) span');
+                const bio = bioElement ? bioElement.textContent.toLowerCase() : '';
                 
                 if (trainerName.includes(searchTerm) || 
                     specialization.includes(searchTerm) || 
@@ -556,15 +611,25 @@ $totalTrainers = count($trainers);
                     noResultsMsg = document.createElement('div');
                     noResultsMsg.className = 'empty-state no-results';
                     noResultsMsg.innerHTML = `
-                        <i class="fas fa-search fa-3x" style="color: #e9ecef; margin-bottom: 1rem;"></i>
-                        <h3 style="color: #495057; margin-bottom: 1rem;">No Matching Trainers</h3>
-                        <p style="color: #6c757d;">No trainers found matching "<strong>${searchTerm}</strong>"</p>
-                        <p style="color: #6c757d; margin-top: 1rem; font-size: 0.9rem;">Try searching by name, specialization, or certification</p>
+                        <i class="fas fa-search fa-3x"></i>
+                        <h3>No Matching Trainers</h3>
+                        <p>No trainers found matching "<strong>${searchTerm}</strong>"</p>
+                        <p style="margin-top: 1rem; font-size: 0.9rem;">Try searching by name, specialization, or certification</p>
                     `;
                     trainerGrid.parentNode.insertBefore(noResultsMsg, trainerGrid.nextSibling);
                 }
             } else if (noResultsMsg) {
                 noResultsMsg.remove();
+            }
+        });
+        
+        // Auto-focus search on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchInput');
+            if(searchInput) {
+                setTimeout(() => {
+                    searchInput.focus();
+                }, 300);
             }
         });
     </script>
