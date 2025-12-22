@@ -1,106 +1,186 @@
 <?php
 session_start();
-require_once 'config/database.php';
 
-if(!isset($_SESSION['user_id']) || !isset($_SESSION['user_type']) || $_SESSION['user_type'] !== 'member') {
+// Enable error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+// Check if user is logged in
+if(!isset($_SESSION['user_id'], $_SESSION['user_type']) || $_SESSION['user_type'] !== 'member') {
     header('Location: login.php');
     exit();
 }
 
-if($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: user-payments.php');
-    exit();
-}
+$user_id = $_SESSION['user_id'];
+$message = '';
+$success = false;
 
 try {
-    $pdo = Database::getInstance()->getConnection();
-    $user_id = $_SESSION['user_id'];
+    require_once 'config/database.php';
+    $database = Database::getInstance();
+    $pdo = $database->getConnection();
     
-    // Get user info
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
-    $stmt->execute([$user_id]);
-    $user = $stmt->fetch();
-    
-    // Validate input
-    $amount = filter_input(INPUT_POST, 'amount', FILTER_VALIDATE_FLOAT);
-    $payment_method = filter_input(INPUT_POST, 'payment_method', FILTER_SANITIZE_STRING);
-    $subscription_period = filter_input(INPUT_POST, 'subscription_period', FILTER_SANITIZE_STRING);
-    $notes = filter_input(INPUT_POST, 'notes', FILTER_SANITIZE_STRING);
-    
-    if(!$amount || $amount <= 0) {
-        $_SESSION['error'] = "Invalid amount specified";
-        header('Location: user-payments.php');
-        exit();
-    }
-    
-    // Handle file upload for receipt
-    $receipt_image = null;
-    if(isset($_FILES['receipt_image']) && $_FILES['receipt_image']['error'] === UPLOAD_ERR_OK) {
-        $upload_dir = 'uploads/receipts/';
-        if(!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0777, true);
-        }
+    // Check if form was submitted
+    if($_SERVER['REQUEST_METHOD'] === 'POST') {
         
-        $file_ext = pathinfo($_FILES['receipt_image']['name'], PATHINFO_EXTENSION);
-        $file_name = 'receipt_' . time() . '_' . $user_id . '.' . $file_ext;
-        $file_path = $upload_dir . $file_name;
-        
-        // Validate file type
-        $allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
-        $file_type = $_FILES['receipt_image']['type'];
-        
-        if(in_array($file_type, $allowed_types)) {
-            if(move_uploaded_file($_FILES['receipt_image']['tmp_name'], $file_path)) {
-                $receipt_image = $file_path;
+        // Validate required fields
+        $required = ['payment_method', 'amount', 'subscription_period', 'reference_number'];
+        $missing = [];
+        foreach($required as $field) {
+            if(empty($_POST[$field])) {
+                $missing[] = $field;
             }
         }
+        
+        if(!empty($missing)) {
+            throw new Exception("Missing required fields: " . implode(', ', $missing));
+        }
+        
+        // Sanitize inputs
+        $payment_method = htmlspecialchars(trim($_POST['payment_method']));
+        $amount = floatval($_POST['amount']);
+        $subscription_period = htmlspecialchars(trim($_POST['subscription_period']));
+        $reference_number = htmlspecialchars(trim($_POST['reference_number']));
+        $notes = isset($_POST['notes']) ? htmlspecialchars(trim($_POST['notes'])) : '';
+        $bank_name = isset($_POST['bank_name']) ? htmlspecialchars(trim($_POST['bank_name'])) : '';
+        
+        // Validate amount
+        if($amount <= 0) {
+            throw new Exception("Invalid amount. Please enter a positive number.");
+        }
+        
+        // Handle file upload if required
+        $receipt_image = null;
+        if(in_array($payment_method, ['gcash', 'paymaya', 'bank_transfer']) && isset($_FILES['receipt_image'])) {
+            $file = $_FILES['receipt_image'];
+            
+            // Check if file was uploaded without errors
+            if($file['error'] === UPLOAD_ERR_OK) {
+                // Create uploads directory if it doesn't exist
+                $upload_dir = 'uploads/receipts/';
+                if(!is_dir($upload_dir)) {
+                    if(!mkdir($upload_dir, 0755, true)) {
+                        throw new Exception("Failed to create upload directory.");
+                    }
+                }
+                
+                // Generate unique filename
+                $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+                $allowed_ext = ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'webp'];
+                
+                if(!in_array($file_ext, $allowed_ext)) {
+                    throw new Exception("Invalid file type. Only JPG, PNG, GIF, PDF, and WEBP are allowed.");
+                }
+                
+                // Validate file size (5MB max)
+                $max_size = 5 * 1024 * 1024; // 5MB in bytes
+                if($file['size'] > $max_size) {
+                    throw new Exception("File is too large. Maximum size is 5MB.");
+                }
+                
+                // Create unique filename
+                $filename = 'receipt_' . time() . '_' . $user_id . '_' . bin2hex(random_bytes(4)) . '.' . $file_ext;
+                $destination = $upload_dir . $filename;
+                
+                // Move uploaded file
+                if(move_uploaded_file($file['tmp_name'], $destination)) {
+                    $receipt_image = $destination;
+                } else {
+                    throw new Exception("Failed to move uploaded file.");
+                }
+            } elseif($file['error'] === UPLOAD_ERR_NO_FILE) {
+                // No file uploaded for methods that require it
+                if(in_array($payment_method, ['gcash', 'paymaya', 'bank_transfer'])) {
+                    throw new Exception("Please upload a receipt/screenshot for " . $payment_method . " payment.");
+                }
+            } else {
+                throw new Exception("File upload error: " . $file['error']);
+            }
+        }
+        
+        // For cash payments, receipt will be provided later by staff
+        if($payment_method === 'cash') {
+            $receipt_image = 'cash_payment_' . time();
+        }
+        
+        // For credit card, simulate payment gateway
+        if($payment_method === 'credit_card') {
+            $receipt_image = 'credit_card_payment_' . time();
+        }
+        
+        // Create payments table if it doesn't exist
+        $tableCheck = $pdo->query("SHOW TABLES LIKE 'payments'");
+        if($tableCheck->rowCount() == 0) {
+            $sql = "CREATE TABLE payments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                reference_number VARCHAR(50) NOT NULL UNIQUE,
+                payment_method VARCHAR(50) NOT NULL,
+                amount DECIMAL(10,2) NOT NULL,
+                subscription_period VARCHAR(100),
+                bank_name VARCHAR(100),
+                receipt_image VARCHAR(255),
+                notes TEXT,
+                status ENUM('pending', 'completed', 'failed') DEFAULT 'pending',
+                payment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_user_id (user_id),
+                INDEX idx_status (status)
+            )";
+            $pdo->exec($sql);
+        }
+        
+        // Insert payment into database
+        $stmt = $pdo->prepare("
+            INSERT INTO payments (
+                user_id, 
+                reference_number, 
+                payment_method, 
+                amount, 
+                subscription_period,
+                bank_name,
+                receipt_image,
+                notes,
+                status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+        ");
+        
+        $result = $stmt->execute([
+            $user_id,
+            $reference_number,
+            $payment_method,
+            $amount,
+            $subscription_period,
+            $bank_name,
+            $receipt_image,
+            $notes
+        ]);
+        
+        if($result) {
+            $payment_id = $pdo->lastInsertId();
+            
+            $message = "Payment submitted successfully! Reference: $reference_number. Your payment is pending verification.";
+            $success = true;
+            
+            $_SESSION['payment_success'] = $message;
+            
+        } else {
+            throw new Exception("Failed to save payment to database.");
+        }
+        
+    } else {
+        throw new Exception("Invalid request method. Expected POST.");
     }
     
-    // Generate transaction ID
-    $transaction_id = 'TXN' . strtoupper(uniqid());
-    
-    // Insert payment record
-    $stmt = $pdo->prepare("
-        INSERT INTO payments 
-        (user_id, amount, payment_method, status, subscription_period, 
-         transaction_id, receipt_image, notes, payment_date)
-        VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, NOW())
-    ");
-    
-    $stmt->execute([
-        $user_id,
-        $amount,
-        $payment_method,
-        $subscription_period,
-        $transaction_id,
-        $receipt_image,
-        $notes
-    ]);
-    
-    // Send email notification to admin
-    $admin_email = 'admin@conquergym.com'; // Change to your admin email
-    $subject = "New Payment Pending Approval";
-    $message = "
-        New payment submitted by {$user['full_name']} ({$user['email']})
-        
-        Amount: \${$amount}
-        Method: {$payment_method}
-        Transaction ID: {$transaction_id}
-        Period: {$subscription_period}
-        
-        Please review and confirm in the admin panel.
-    ";
-    
-    mail($admin_email, $subject, $message);
-    
-    $_SESSION['success'] = "Payment submitted successfully! Transaction ID: {$transaction_id}";
-    header('Location: user-payments.php');
-    exit();
-    
-} catch(PDOException $e) {
-    error_log("Payment processing error: " . $e->getMessage());
-    $_SESSION['error'] = "Error processing payment. Please try again.";
-    header('Location: user-payments.php');
-    exit();
+} catch (Exception $e) {
+    $message = "Error: " . $e->getMessage();
+    $_SESSION['payment_error'] = $message;
+} catch (PDOException $e) {
+    $message = "Database error: " . $e->getMessage();
+    $_SESSION['payment_error'] = $message;
 }
+
+// Redirect back to payments page
+header('Location: payments.php');
+exit();
 ?>
